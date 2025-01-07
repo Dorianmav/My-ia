@@ -1,0 +1,73 @@
+.generated-component {
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 800px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.welcome {
+    text-align: center;
+}
+
+.welcome h1 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.welcome p {
+    color: #666;
+    font-size: 18px;
+}
+
+/* Counter Styles */
+.compteur {
+    text-align: center;
+}
+
+.compteur h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.counter-display {
+    font-size: 48px;
+    font-weight: bold;
+    color: #0066cc;
+    margin: 20px 0;
+}
+
+.counter-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.counter-button {
+    padding: 10px 20px;
+    font-size: 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 60px;
+}
+
+.counter-button.increment {
+    background-color: #28a745;
+    color: white;
+}
+
+.counter-button.increment:hover {
+    background-color: #218838;
+}
+
+.counter-button.decrement {
+    background-color: #dc3545;
+    color: white;
+}
+
+.counter-button.decrement:hover {
+    background-color: #c82333;
+}
