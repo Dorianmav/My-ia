@@ -1,58 +1,103 @@
 .dynamic-content {
-    max-width: 800px;
+    padding: 20px;
     margin: 20px auto;
-    background-color: white;
+    max-width: 800px;
+}
+
+.error-message {
+    color: #dc3545;
+    text-align: center;
+    padding: 20px;
+    background-color: #f8d7da;
     border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
 }
 
-.content-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #eee;
-    background-color: #f8f9fa;
-    border-radius: 5px 5px 0 0;
-}
-
-.content-header h3 {
-    margin: 0;
-    color: #333;
-    margin-bottom: 10px;
-}
-
-.content-metadata {
-    display: flex;
-    gap: 20px;
-    font-size: 14px;
+.loading-message {
+    text-align: center;
+    padding: 20px;
     color: #666;
+    font-style: italic;
 }
 
-.content-body {
-    padding: 10px 0;
-    background-color: #fff;
-    border-radius: 0 0 5px 5px;
-    overflow-x: auto;
+/* Card styles */
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
 }
 
-.content-line {
+.w-full {
+    width: 100%;
+}
+
+.max-w-sm {
+    max-width: 24rem;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.card-content {
+    padding: 1.5rem;
+}
+
+.flex {
     display: flex;
-    padding: 2px 0;
-    font-family: monospace;
 }
 
-.content-line:hover {
-    background-color: #f8f9fa;
+.flex-col {
+    flex-direction: column;
 }
 
-.line-number {
-    width: 50px;
-    padding: 0 10px;
-    color: #999;
-    text-align: right;
-    user-select: none;
-    border-right: 1px solid #eee;
+.items-center {
+    align-items: center;
 }
 
-.line-content {
-    padding: 0 10px;
-    white-space: pre;
+.gap-4 {
+    gap: 1rem;
+}
+
+/* Text utilities */
+.text-center {
+    text-align: center;
+}
+
+.text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+
+.text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+/* Button styles */
+.bg-blue-500 {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.bg-blue-600 {
+    background-color: #2563eb;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #2563eb;
 }
