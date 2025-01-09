@@ -73,8 +73,12 @@ const Welcome = () => {
     return (
         <div className="generated-component">
             <div class="welcome">
-                <h1>Welcome to our site!</h1>
-                <p>This is a custom welcome message.</p>
+                <h1>Welcome to my test site!</h1>
+                <p>There i'm gonna try to make something cool like: </p>
+                <ul>
+                    <li>Create dynamic components</li>
+                    <li>Managing and displaying Marckown, emotes, code block and diagrame with mermaid under react</li>
+                </ul>
             </div>
         </div>
     );
@@ -185,7 +189,11 @@ const mockComponents = {
     ),
     CardContent: ({ children, className }) => (
         <div className={`card-content ${className}`}>{children}</div>
-    )
+    ),
+    Markdown: ({ children }) => {
+        const Markdown = require('react-markdown');
+        return <Markdown>{children}</Markdown>;
+    }
 };
 
 const DynamicContent = ({ componentKey }) => {

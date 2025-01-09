@@ -4,9 +4,17 @@
   "private": true,
   "dependencies": {
     "cra-template": "1.2.0",
+    "mermaid": "^11.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.3",
     "react-scripts": "^5.0.1",
+    "react-syntax-highlighter": "^15.6.1",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-breaks": "^4.0.0",
+    "remark-emoji": "^5.0.1",
+    "remark-gfm": "^4.0.0",
     "web-vitals": "^4.2.4"
   },
   "scripts": {
