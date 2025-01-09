@@ -4,6 +4,29 @@ import UserTable from './components/UserTable';
 import DynamicContent from './components/DynamicContent';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import Groq from 'groq-sdk';
+import mermaid from 'mermaid';
+
+// Initialize mermaid
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'default',
+  securityLevel: 'loose',
+  flowchart: {
+    htmlLabels: true,
+    curve: 'basis'
+  },
+  sequence: {
+    diagramMarginX: 50,
+    diagramMarginY: 10,
+    actorMargin: 50,
+    width: 150,
+    height: 65,
+    boxMargin: 10,
+    boxTextMargin: 5,
+    noteMargin: 10,
+    messageMargin: 35
+  }
+});
 
 const groq = new Groq({
   apiKey: process.env.REACT_APP_GROQ_API_KEY, dangerouslyAllowBrowser: true
@@ -96,6 +119,10 @@ function App() {
         }, animationSpeed);
       } else {
         setIsAnimating(false);
+        // Reinitialize mermaid after animation is complete
+        setTimeout(() => {
+          mermaid.contentLoaded();
+        }, 100);
       }
     }
     
