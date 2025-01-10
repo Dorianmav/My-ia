@@ -29,52 +29,55 @@ mermaid.initialize({
 });
 
 const groq = new Groq({
-  apiKey: process.env.REACT_APP_GROQ_API_KEY, dangerouslyAllowBrowser: true
+  apiKey: process.env.REACT_APP_GROQ_API_KEY,
+  dangerouslyAllowBrowser: true
 });
-
-const defaultMarkdown = `# Examples
-
-## 1. Flowchart
-
-
-
-## 2. Code Example
-
-\`\`\`javascript
-// This is a simple JavaScript function
-function greet(name) {
-    console.log('Hello, ' + name + '! 👋');
-}
-\`\`\`
-
-## 3. Emojis
-- I love coding! :heart: :computer:
-- This is awesome! :star: :rocket:
-- Great job! :+1: :tada:
-
-`;
 
 function App() {
   const [inputText, setInputText] = useState('');
-  const [displayText, setDisplayText] = useState('');
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [targetText, setTargetText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const animationSpeed = 10; // milliseconds per character
-  const animationRef = useRef(null);
   const contentRef = useRef(null);
-  const lastScrollRef = useRef(0);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('chatHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
 
+  // Auto scroll to bottom when new messages arrive
   useEffect(() => {
-    // Initial display
-    handleShow();
-  }, []);
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-  const askGroq = async (prompt) => {
+  const clearHistory = () => {
+    if (window.confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([]);
+      localStorage.removeItem('chatHistory');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
+    
+    // Add user message
+    const userMessage = {
+      role: 'user',
+      content: inputText,
+      timestamp: new Date().toISOString()
+    };
+    
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setInputText(''); // Clear input
+    
+    // Save to localStorage
+    localStorage.setItem('chatHistory', JSON.stringify(updatedMessages));
+    
+    // Send to Groq
     setIsLoading(true);
     try {
       const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: 'user', content: prompt }],
+        messages: updatedMessages.map(({ role, content }) => ({ role, content })),
         model: "llama-3.3-70b-versatile",
         temperature: 0.7,
         max_tokens: 2048,
@@ -83,141 +86,151 @@ function App() {
         stop: null
       });
 
-      let accumulatedText = '';
+      let assistantMessage = {
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString()
+      };
+
       for await (const chunk of chatCompletion) {
         const content = chunk.choices[0]?.delta?.content || '';
-        accumulatedText += content;
-        setInputText(accumulatedText);
+        assistantMessage.content += content;
+        setMessages([...updatedMessages, { ...assistantMessage }]);
       }
+
+      // Save final version to localStorage
+      const finalMessages = [...updatedMessages, assistantMessage];
+      setMessages(finalMessages);
+      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
     } catch (error) {
       console.error('Error:', error);
-      setInputText('Error occurred while fetching response');
+      const errorMessage = {
+        role: 'system',
+        content: 'Error occurred while fetching response',
+        timestamp: new Date().toISOString()
+      };
+      const finalMessages = [...updatedMessages, errorMessage];
+      setMessages(finalMessages);
+      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (isAnimating) {
-      let currentIndex = displayText.length;
-      
-      if (currentIndex < targetText.length) {
-        animationRef.current = setTimeout(() => {
-          setDisplayText(targetText.slice(0, currentIndex + 1));
-          
-          // Scroll to the bottom of the new content
-          if (contentRef.current) {
-            const container = contentRef.current;
-            const scrollHeight = container.scrollHeight;
-            
-            // Only scroll if content height has increased
-            if (scrollHeight > lastScrollRef.current) {
-              container.scrollTop = scrollHeight;
-              lastScrollRef.current = scrollHeight;
-            }
-          }
-        }, animationSpeed);
-      } else {
-        setIsAnimating(false);
-        // Reinitialize mermaid after animation is complete
-        setTimeout(() => {
-          mermaid.contentLoaded();
-        }, 100);
-      }
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
-    
-    return () => {
-      if (animationRef.current) {
-        clearTimeout(animationRef.current);
-      }
-    };
-  }, [displayText, targetText, isAnimating]);
-
-  const handleShow = () => {
-    const newText = inputText || defaultMarkdown;
-    setTargetText(newText);
-    setDisplayText('');
-    setIsAnimating(true);
-    lastScrollRef.current = 0; // Reset scroll position tracking
-  };
-
-  const handleAskGroq = async () => {
-    await askGroq("Generate a creative markdown example with code, emojis, and a mermaid diagram");
   };
 
   return (
     <div className="App">
       <DynamicContent componentKey="welcome" />
-      {/* <DynamicContent componentKey="counter" /> */}
-      {/* <DynamicContent componentKey="userTable" /> */}
       <div style={{ 
         padding: '20px 40px', 
         maxWidth: '1000px', 
-        margin: '20px',
+        margin: '20px auto',
         backgroundColor: '#ffffff',
         boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-        borderRadius: '8px'
+        borderRadius: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '80vh'
       }}>
-        <div style={{ marginBottom: '20px' }}>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '20px'
+        }}>
+          <h2 style={{ margin: 0 }}>Chat with Millia</h2>
+          <button
+            onClick={clearHistory}
             style={{
-              width: '100%',
-              minHeight: '100px',
-              padding: '10px',
-              marginBottom: '10px',
+              padding: '8px 16px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
               borderRadius: '4px',
-              border: '1px solid #ccc'
+              cursor: 'pointer'
             }}
-            placeholder="Enter your markdown here..."
-          />
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={handleShow}
-              disabled={isAnimating}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: isAnimating ? '#cccccc' : '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isAnimating ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.3s ease'
-              }}
-            >
-              {isAnimating ? 'Animating...' : 'Show'}
-            </button>
-            <button
-              onClick={handleAskGroq}
-              disabled={isLoading}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: isLoading ? '#cccccc' : '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.3s ease'
-              }}
-            >
-              {isLoading ? 'Loading...' : 'Ask Groq'}
-            </button>
-          </div>
+          >
+            Clear History
+          </button>
         </div>
+        
         <div 
           ref={contentRef}
           style={{
-            maxHeight: '500px',
+            flex: 1,
             overflowY: 'auto',
             padding: '20px',
             border: '1px solid #eee',
             borderRadius: '4px',
             backgroundColor: '#fafafa',
+            marginBottom: '20px',
             scrollBehavior: 'smooth'
           }}
         >
-          <MarkdownRenderer content={displayText} />
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              style={{
+                marginBottom: '20px',
+                padding: '10px',
+                borderRadius: '8px',
+                backgroundColor: message.role === 'user' ? '#e3f2fd' : '#fff',
+                border: '1px solid #e0e0e0',
+                maxWidth: '80%',
+                marginLeft: message.role === 'user' ? 'auto' : '0'
+              }}
+            >
+              <div style={{ 
+                fontWeight: 'bold', 
+                marginBottom: '5px',
+                color: message.role === 'user' ? '#1976d2' : '#2e7d32'
+              }}>
+                {message.role === 'user' ? 'You' : 'Millia'}
+              </div>
+              <MarkdownRenderer content={message.content} />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyPress={handleKeyPress}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              resize: 'vertical',
+              minHeight: '50px',
+              maxHeight: '150px'
+            }}
+            placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={isLoading || !inputText.trim()}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: isLoading || !inputText.trim() ? '#cccccc' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isLoading || !inputText.trim() ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.3s ease',
+              alignSelf: 'flex-end'
+            }}
+          >
+            {isLoading ? 'Sending...' : 'Send'}
+          </button>
         </div>
       </div>
     </div>
