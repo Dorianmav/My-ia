@@ -1,10 +1,11 @@
 import React from 'react';
 import './ConversationHistory.css';
 
-const ConversationHistory = ({ messages, isVisible, onSelectConversation, onNewConversation }) => {
+const ConversationHistory = ({ messages, conversations, isVisible, onSelectConversation, onNewConversation }) => {
   // Group messages by date sections
   const groupMessagesByDate = () => {
     const groups = {
+      'Récent': [],
       'Hier': [],
       '7 jours précédents': [],
       '30 jours précédents': [],
@@ -12,21 +13,31 @@ const ConversationHistory = ({ messages, isVisible, onSelectConversation, onNewC
     };
 
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
     
-    messages.forEach(message => {
-      if (message.role === 'user') {
-        const messageDate = new Date(message.timestamp);
-        const diffDays = Math.floor((now - messageDate) / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 1) {
-          groups['Hier'].push(message);
-        } else if (diffDays < 7) {
-          groups['7 jours précédents'].push(message);
-        } else if (diffDays < 30) {
-          groups['30 jours précédents'].push(message);
-        } else {
-          groups['2024'].push(message);
-        }
+    // Combine current messages and saved conversations
+    const allConversations = [...conversations].map(conv => ({
+      ...conv,
+      summary: conv.summary || conv.messages[0]?.content || 'Nouvelle conversation',
+      timestamp: conv.timestamp || conv.messages[0]?.timestamp
+    }));
+
+    allConversations.forEach(conv => {
+      const messageDate = new Date(conv.timestamp);
+      const diffDays = Math.floor((now - messageDate) / (1000 * 60 * 60 * 24));
+      
+      if (messageDate >= today) {
+        groups['Récent'].push(conv);
+      } else if (messageDate >= yesterday) {
+        groups['Hier'].push(conv);
+      } else if (diffDays < 7) {
+        groups['7 jours précédents'].push(conv);
+      } else if (diffDays < 30) {
+        groups['30 jours précédents'].push(conv);
+      } else {
+        groups['2024'].push(conv);
       }
     });
 
@@ -45,18 +56,20 @@ const ConversationHistory = ({ messages, isVisible, onSelectConversation, onNewC
         </button>
       </div>
       
-      {Object.entries(groups).map(([period, messages]) => (
-        messages.length > 0 && (
+      {Object.entries(groups).map(([period, convs]) => (
+        convs.length > 0 && (
           <div key={period} className="history-section">
             <h3 className="history-period">{period}</h3>
-            {messages.map((message, index) => (
+            {convs.map((conv, index) => (
               <div 
                 key={index} 
                 className="history-item"
-                onClick={() => onSelectConversation(message.timestamp)}
+                onClick={() => onSelectConversation(conv.id)}
               >
-                {message.content.substring(0, 30)}
-                {message.content.length > 30 ? '...' : ''}
+                <div className="history-item-content">
+                  <div className="history-item-summary">{conv.summary}</div>
+                  <div className="history-item-keywords">{conv.keywords?.join(', ')}</div>
+                </div>
               </div>
             ))}
           </div>

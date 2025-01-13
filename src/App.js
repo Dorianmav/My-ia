@@ -39,22 +39,82 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const contentRef = useRef(null);
-  const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem('chatHistory');
+  
+  const [messages, setMessages] = useState([]);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [conversations, setConversations] = useState(() => {
+    const saved = localStorage.getItem('conversations');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Auto scroll to bottom when new messages arrive
+  // Load current conversation from localStorage on initial load
   useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    const currentConv = localStorage.getItem('currentConversation');
+    if (currentConv) {
+      const parsed = JSON.parse(currentConv);
+      setMessages(parsed.messages);
+      setCurrentConversationId(parsed.id);
+    }
+  }, []);
+
+  // Save current conversation whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      const conversationData = {
+        id: currentConversationId || messages[0].timestamp,
+        messages,
+        timestamp: messages[0].timestamp,
+        summary: messages[0].content.substring(0, 100) + '...',
+        keywords: extractKeywords(messages)
+      };
+
+      // Update currentConversationId if it's a new conversation
+      if (!currentConversationId) {
+        setCurrentConversationId(conversationData.id);
+      }
+
+      // Save current conversation state
+      localStorage.setItem('currentConversation', JSON.stringify(conversationData));
+
+      // Update the conversation in the conversations list if it exists
+      const updatedConversations = conversations.map(conv => 
+        conv.id === conversationData.id ? conversationData : conv
+      );
+
+      // If this is a new conversation that's not in the list yet, add it
+      if (!conversations.some(conv => conv.id === conversationData.id)) {
+        updatedConversations.unshift(conversationData);
+      }
+
+      setConversations(updatedConversations);
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
     }
   }, [messages]);
 
-  const clearHistory = () => {
-    if (window.confirm('Are you sure you want to clear the chat history?')) {
-      setMessages([]);
-      localStorage.removeItem('chatHistory');
+  const extractKeywords = (messages) => {
+    // Simple keyword extraction from the first user message
+    const userMessage = messages.find(m => m.role === 'user')?.content || '';
+    const words = userMessage.toLowerCase().split(/\W+/);
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']);
+    return words
+      .filter(word => word.length > 3 && !commonWords.has(word))
+      .slice(0, 3);
+  };
+
+  const handleNewConversation = () => {
+    setMessages([]);
+    setCurrentConversationId(null);
+    localStorage.removeItem('currentConversation');
+    setIsHistoryVisible(false);
+  };
+
+  const handleSelectConversation = (conversationId) => {
+    const selectedConv = conversations.find(conv => conv.id === conversationId);
+    if (selectedConv) {
+      setMessages(selectedConv.messages);
+      setCurrentConversationId(selectedConv.id);
+      localStorage.setItem('currentConversation', JSON.stringify(selectedConv));
+      setIsHistoryVisible(false);
     }
   };
 
@@ -71,9 +131,6 @@ function App() {
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInputText(''); // Clear input
-    
-    // Save to localStorage
-    localStorage.setItem('chatHistory', JSON.stringify(updatedMessages));
     
     // Send to Groq
     setIsLoading(true);
@@ -103,7 +160,13 @@ function App() {
       // Save final version to localStorage
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
-      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+      localStorage.setItem('currentConversation', JSON.stringify({
+        id: finalMessages[0].timestamp,
+        messages: finalMessages,
+        timestamp: finalMessages[0].timestamp,
+        summary: finalMessages[0].content.substring(0, 100) + '...',
+        keywords: extractKeywords(finalMessages)
+      }));
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = {
@@ -113,7 +176,13 @@ function App() {
       };
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+      localStorage.setItem('currentConversation', JSON.stringify({
+        id: finalMessages[0].timestamp,
+        messages: finalMessages,
+        timestamp: finalMessages[0].timestamp,
+        summary: finalMessages[0].content.substring(0, 100) + '...',
+        keywords: extractKeywords(finalMessages)
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -126,46 +195,14 @@ function App() {
     }
   };
 
-  const handleSelectConversation = (timestamp) => {
-    // Find the index of the first message in the selected conversation
-    const selectedIndex = messages.findIndex(msg => msg.timestamp === timestamp);
-    if (selectedIndex !== -1) {
-      // Get all messages from this conversation
-      const conversationMessages = [];
-      let i = selectedIndex;
-      
-      // Add the selected message
-      conversationMessages.push(messages[i]);
-      
-      // Add subsequent messages until we hit the next user message
-      i++;
-      while (i < messages.length && messages[i].role === 'assistant') {
-        conversationMessages.push(messages[i]);
-        i++;
-      }
-
-      // Update the messages state with just this conversation
-      setMessages(conversationMessages);
-      
-      // Close the history sidebar
-      setIsHistoryVisible(false);
+  const clearHistory = () => {
+    if (window.confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([]);
+      setCurrentConversationId(null);
+      setConversations([]);
+      localStorage.removeItem('currentConversation');
+      localStorage.removeItem('conversations');
     }
-  };
-
-  const handleNewConversation = () => {
-    // Save current conversation to localStorage if it exists
-    if (messages.length > 0) {
-      const allConversations = JSON.parse(localStorage.getItem('allConversations') || '[]');
-      allConversations.push(messages);
-      localStorage.setItem('allConversations', JSON.stringify(allConversations));
-    }
-    
-    // Clear current conversation
-    setMessages([]);
-    localStorage.removeItem('chatHistory');
-    
-    // Close the sidebar
-    setIsHistoryVisible(false);
   };
 
   return (
@@ -178,7 +215,8 @@ function App() {
       </button>
       
       <ConversationHistory 
-        messages={messages} 
+        messages={messages}
+        conversations={conversations}
         isVisible={isHistoryVisible}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
