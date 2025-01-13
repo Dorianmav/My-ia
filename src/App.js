@@ -3,6 +3,7 @@ import './App.css';
 import UserTable from './components/UserTable';
 import DynamicContent from './components/DynamicContent';
 import MarkdownRenderer from './components/MarkdownRenderer';
+import ConversationHistory from './components/ConversationHistory';
 import Groq from 'groq-sdk';
 import mermaid from 'mermaid';
 
@@ -36,6 +37,7 @@ const groq = new Groq({
 function App() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const contentRef = useRef(null);
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
@@ -124,113 +126,171 @@ function App() {
     }
   };
 
+  const handleSelectConversation = (timestamp) => {
+    // Find the index of the first message in the selected conversation
+    const selectedIndex = messages.findIndex(msg => msg.timestamp === timestamp);
+    if (selectedIndex !== -1) {
+      // Get all messages from this conversation
+      const conversationMessages = [];
+      let i = selectedIndex;
+      
+      // Add the selected message
+      conversationMessages.push(messages[i]);
+      
+      // Add subsequent messages until we hit the next user message
+      i++;
+      while (i < messages.length && messages[i].role === 'assistant') {
+        conversationMessages.push(messages[i]);
+        i++;
+      }
+
+      // Update the messages state with just this conversation
+      setMessages(conversationMessages);
+      
+      // Close the history sidebar
+      setIsHistoryVisible(false);
+    }
+  };
+
+  const handleNewConversation = () => {
+    // Save current conversation to localStorage if it exists
+    if (messages.length > 0) {
+      const allConversations = JSON.parse(localStorage.getItem('allConversations') || '[]');
+      allConversations.push(messages);
+      localStorage.setItem('allConversations', JSON.stringify(allConversations));
+    }
+    
+    // Clear current conversation
+    setMessages([]);
+    localStorage.removeItem('chatHistory');
+    
+    // Close the sidebar
+    setIsHistoryVisible(false);
+  };
+
   return (
     <div className="App">
-      <DynamicContent componentKey="welcome" />
-      <div style={{ 
-        padding: '20px 40px', 
-        maxWidth: '1000px', 
-        margin: '20px auto',
-        backgroundColor: '#ffffff',
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-        borderRadius: '8px',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '80vh'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: '20px'
+      <button 
+        className="toggle-history" 
+        onClick={() => setIsHistoryVisible(!isHistoryVisible)}
+      >
+        {isHistoryVisible ? '×' : '≡'}
+      </button>
+      
+      <ConversationHistory 
+        messages={messages} 
+        isVisible={isHistoryVisible}
+        onSelectConversation={handleSelectConversation}
+        onNewConversation={handleNewConversation}
+      />
+      
+      <div className="app-container">
+        <DynamicContent componentKey="welcome" />
+        <div className="chat-container" style={{ 
+          padding: '20px 40px', 
+          maxWidth: '1000px', 
+          margin: '20px auto',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '80vh'
         }}>
-          <h2 style={{ margin: 0 }}>Chat with Millia</h2>
-          <button
-            onClick={clearHistory}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Clear History
-          </button>
-        </div>
-        
-        <div 
-          ref={contentRef}
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '20px',
-            border: '1px solid #eee',
-            borderRadius: '4px',
-            backgroundColor: '#fafafa',
-            marginBottom: '20px',
-            scrollBehavior: 'smooth'
-          }}
-        >
-          {messages.map((message, index) => (
-            <div
-              key={index}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '20px'
+          }}>
+            <h2 style={{ margin: 0 }}>Chat with Milla</h2>
+            <button
+              onClick={clearHistory}
               style={{
-                marginBottom: '20px',
-                padding: '10px',
-                borderRadius: '8px',
-                backgroundColor: message.role === 'user' ? '#e3f2fd' : '#fff',
-                border: '1px solid #e0e0e0',
-                maxWidth: '80%',
-                marginLeft: message.role === 'user' ? 'auto' : '0'
+                padding: '8px 16px',
+                backgroundColor: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
               }}
             >
-              <div style={{ 
-                fontWeight: 'bold', 
-                marginBottom: '5px',
-                color: message.role === 'user' ? '#1976d2' : '#2e7d32'
-              }}>
-                {message.role === 'user' ? 'You' : 'Millia'}
-              </div>
-              <MarkdownRenderer content={message.content} />
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={handleKeyPress}
+              Clear History
+            </button>
+          </div>
+          
+          <div 
+            ref={contentRef}
             style={{
               flex: 1,
-              padding: '10px',
+              overflowY: 'auto',
+              padding: '20px',
+              border: '1px solid #eee',
               borderRadius: '4px',
-              border: '1px solid #ccc',
-              resize: 'vertical',
-              minHeight: '50px',
-              maxHeight: '150px'
-            }}
-            placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={isLoading || !inputText.trim()}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: isLoading || !inputText.trim() ? '#cccccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isLoading || !inputText.trim() ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.3s ease',
-              alignSelf: 'flex-end'
+              backgroundColor: '#fafafa',
+              marginBottom: '20px',
+              scrollBehavior: 'smooth'
             }}
           >
-            {isLoading ? 'Sending...' : 'Send'}
-          </button>
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                style={{
+                  marginBottom: '20px',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  backgroundColor: message.role === 'user' ? '#e3f2fd' : '#fff',
+                  border: '1px solid #e0e0e0',
+                  maxWidth: '80%',
+                  marginLeft: message.role === 'user' ? 'auto' : '0'
+                }}
+              >
+                <div style={{ 
+                  fontWeight: 'bold', 
+                  marginBottom: '5px',
+                  color: message.role === 'user' ? '#1976d2' : '#2e7d32'
+                }}>
+                  {message.role === 'user' ? 'You' : 'Milla'}
+                </div>
+                <MarkdownRenderer content={message.content} />
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '4px',
+                border: '1px solid #ccc',
+                resize: 'vertical',
+                minHeight: '50px',
+                maxHeight: '150px'
+              }}
+              placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || !inputText.trim()}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: isLoading || !inputText.trim() ? '#cccccc' : '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: isLoading || !inputText.trim() ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.3s ease',
+                alignSelf: 'flex-end'
+              }}
+            >
+              {isLoading ? 'Sending...' : 'Send'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
