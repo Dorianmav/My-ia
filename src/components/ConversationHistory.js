@@ -68,7 +68,6 @@ const ConversationHistory = ({ messages, conversations, isVisible, onSelectConve
               >
                 <div className="history-item-content">
                   <div className="history-item-summary">{conv.summary}</div>
-                  <div className="history-item-keywords">{conv.keywords?.join(', ')}</div>
                 </div>
               </div>
             ))}

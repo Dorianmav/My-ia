@@ -74,21 +74,19 @@ function App() {
       content: compressContent(msg.content)
     }));
 
-    // Extraction des mots-clés
-    const keywords = extractKeywords(messages);
-
     // Création d'un résumé basé sur le premier message utilisateur
     const firstUserMessage = messages.find(m => m.role === 'user');
     const summary = firstUserMessage 
       ? compressContent(firstUserMessage.content).substring(0, 100) + '...'
       : 'Nouvelle conversation';
 
+    // Création d'un résumé basé sur tous les méssages de la conversation
+
     return {
       id: currentConversationId || messages[0].timestamp,
       timestamp: messages[0].timestamp,
       lastUpdate: new Date().toISOString(),
       summary,
-      keywords,
       messages: optimizedMessages
     };
   };
