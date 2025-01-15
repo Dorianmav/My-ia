@@ -47,7 +47,79 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Load current conversation from localStorage on initial load
+  // Fonction pour optimiser le stockage des messages
+  const optimizeMessages = (messages) => {
+    return messages.map(msg => {
+      // Ne garde que les champs essentiels
+      const { role, content, timestamp } = msg;
+      return { role, content, timestamp };
+    });
+  };
+
+  // Fonction pour compresser le contenu des messages
+  const compressContent = (content) => {
+    // Supprime les espaces multiples et les sauts de ligne inutiles
+    return content
+      .replace(/\s+/g, ' ')
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+  };
+
+  // Fonction pour optimiser une conversation complète
+  const optimizeConversation = (messages) => {
+    if (messages.length === 0) return null;
+
+    const optimizedMessages = optimizeMessages(messages).map(msg => ({
+      ...msg,
+      content: compressContent(msg.content)
+    }));
+
+    // Extraction des mots-clés
+    const keywords = extractKeywords(messages);
+
+    // Création d'un résumé basé sur le premier message utilisateur
+    const firstUserMessage = messages.find(m => m.role === 'user');
+    const summary = firstUserMessage 
+      ? compressContent(firstUserMessage.content).substring(0, 100) + '...'
+      : 'Nouvelle conversation';
+
+    return {
+      id: currentConversationId || messages[0].timestamp,
+      timestamp: messages[0].timestamp,
+      lastUpdate: new Date().toISOString(),
+      summary,
+      keywords,
+      messages: optimizedMessages
+    };
+  };
+
+  // Effet pour sauvegarder la conversation courante de manière optimisée
+  useEffect(() => {
+    if (messages.length > 0) {
+      const optimizedConv = optimizeConversation(messages);
+      if (!optimizedConv) return;
+
+      // Mise à jour des conversations
+      const updatedConversations = conversations.map(conv => 
+        conv.id === optimizedConv.id ? optimizedConv : conv
+      );
+
+      // Ajout d'une nouvelle conversation si elle n'existe pas
+      if (!conversations.some(conv => conv.id === optimizedConv.id)) {
+        updatedConversations.unshift(optimizedConv);
+      }
+
+      // Limite le nombre de conversations stockées
+      const maxConversations = 50; // Ajustez selon vos besoins
+      const trimmedConversations = updatedConversations.slice(0, maxConversations);
+
+      setConversations(trimmedConversations);
+      localStorage.setItem('conversations', JSON.stringify(trimmedConversations));
+      localStorage.setItem('currentConversation', JSON.stringify(optimizedConv));
+    }
+  }, [messages]);
+
+  // Charge la conversation initiale de manière optimisée
   useEffect(() => {
     const currentConv = localStorage.getItem('currentConversation');
     if (currentConv) {
@@ -56,50 +128,6 @@ function App() {
       setCurrentConversationId(parsed.id);
     }
   }, []);
-
-  // Save current conversation whenever messages change
-  useEffect(() => {
-    if (messages.length > 0) {
-      const conversationData = {
-        id: currentConversationId || messages[0].timestamp,
-        messages,
-        timestamp: messages[0].timestamp,
-        summary: messages[0].content.substring(0, 100) + '...',
-        keywords: extractKeywords(messages)
-      };
-
-      // Update currentConversationId if it's a new conversation
-      if (!currentConversationId) {
-        setCurrentConversationId(conversationData.id);
-      }
-
-      // Save current conversation state
-      localStorage.setItem('currentConversation', JSON.stringify(conversationData));
-
-      // Update the conversation in the conversations list if it exists
-      const updatedConversations = conversations.map(conv => 
-        conv.id === conversationData.id ? conversationData : conv
-      );
-
-      // If this is a new conversation that's not in the list yet, add it
-      if (!conversations.some(conv => conv.id === conversationData.id)) {
-        updatedConversations.unshift(conversationData);
-      }
-
-      setConversations(updatedConversations);
-      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
-    }
-  }, [messages]);
-
-  const extractKeywords = (messages) => {
-    // Simple keyword extraction from the first user message
-    const userMessage = messages.find(m => m.role === 'user')?.content || '';
-    const words = userMessage.toLowerCase().split(/\W+/);
-    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']);
-    return words
-      .filter(word => word.length > 3 && !commonWords.has(word))
-      .slice(0, 3);
-  };
 
   const handleNewConversation = () => {
     setMessages([]);
@@ -121,18 +149,16 @@ function App() {
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
     
-    // Add user message
     const userMessage = {
       role: 'user',
-      content: inputText,
+      content: compressContent(inputText), // Optimise le contenu dès l'envoi
       timestamp: new Date().toISOString()
     };
     
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
-    setInputText(''); // Clear input
+    setInputText('');
     
-    // Send to Groq
     setIsLoading(true);
     try {
       const chatCompletion = await groq.chat.completions.create({
@@ -157,35 +183,31 @@ function App() {
         setMessages([...updatedMessages, { ...assistantMessage }]);
       }
 
-      // Save final version to localStorage
+      // Optimise et sauvegarde la conversation finale
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
-      localStorage.setItem('currentConversation', JSON.stringify({
-        id: finalMessages[0].timestamp,
-        messages: finalMessages,
-        timestamp: finalMessages[0].timestamp,
-        summary: finalMessages[0].content.substring(0, 100) + '...',
-        keywords: extractKeywords(finalMessages)
-      }));
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = {
-        role: 'system',
-        content: 'Error occurred while fetching response',
+        role: 'assistant',
+        content: "Désolé, une erreur s'est produite. Veuillez réessayer.",
         timestamp: new Date().toISOString()
       };
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-      localStorage.setItem('currentConversation', JSON.stringify({
-        id: finalMessages[0].timestamp,
-        messages: finalMessages,
-        timestamp: finalMessages[0].timestamp,
-        summary: finalMessages[0].content.substring(0, 100) + '...',
-        keywords: extractKeywords(finalMessages)
-      }));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const extractKeywords = (messages) => {
+    // Simple keyword extraction from the first user message
+    const userMessage = messages.find(m => m.role === 'user')?.content || '';
+    const words = userMessage.toLowerCase().split(/\W+/);
+    const commonWords = new Set(['le', 'la', 'les', 'un', 'une', 'des', 'et', 'ou', 'mais', 'dans', 'sur', 'au', 'aux', 'a', 'en', 'pour', 'de', 'avec', 'par']);
+    return words
+      .filter(word => word.length > 3 && !commonWords.has(word))
+      .slice(0, 5);
   };
 
   const handleKeyPress = (e) => {
