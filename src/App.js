@@ -39,13 +39,186 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const contentRef = useRef(null);
-  
+
   const [messages, setMessages] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('conversations');
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [currentTopicKey, setCurrentTopicKey] = useState(null);
+  const [topics, setTopics] = useState(() => {
+    const saved = localStorage.getItem('conversationTopics');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Fonction pour générer une clé unique basée sur les mots-clés
+  const generateTopicKey = (keywords) => {
+    // keywords est déjà un tableau
+    return keywords.sort().join('-').toLowerCase();
+  };
+
+  // Fonction pour extraire les mots-clés d'un texte
+  const extractKeywords = async (text) => {
+    let words = "";
+    
+    const textResume = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content: `Analyse ce texte et identifie les mots-clés les plus importants et pertinents. 
+Exemple 1, dans ce texte: je m'appelle Dorian j'ai un chien bleu qui s'appelle Blue
+Exemple de format de réponse attendu, uniquement les mots-clés, séparés par des virgules: Dorian, chien, bleu, blue, s'appelle.
+Exemple 2, dans ce texte:  
+Lors de ma remise des diplôme de bac en 2018 à Méru j'ai pu revoir ma prof préféré madame Ouin et tous mes amis. Une fois arrivé devant les tableau des résultats j'ai vu que j'ai eu le bac à 10.28 et sans mention alors que mon amis Fara l'a eu avec mention bien à 13.56.
+Exemple de format de réponse attendu, uniquement les mots-clés, séparés par des virgules: remise, diplôme, bac, Méru, madame Ouin, amis, résultats, mention.`
+        },
+        {
+          role: 'user',
+          content: text
+        }
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.7,
+      max_tokens: 2048,
+      top_p: 1,
+      stream: true,
+      stop: null
+    });
+
+    for await (const chunk of textResume) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      words += content;
+    }
+
+    // Convertit la chaîne en tableau et nettoie les mots-clés
+    return words
+      .split(',')
+      .map(word => word.trim())
+      .filter(word => word.length > 0); // Filtre les mots vides
+  };
+
+  // Fonction pour nettoyer les mots-clés
+  const cleanKeywords = (keywords) => {
+    if (!Array.isArray(keywords)) {
+      keywords = keywords.split(',').map(k => k.trim());
+    }
+    
+    // Liste de phrases et mots à exclure
+    const phrasesToExclude = [
+      "voici les mots-clés les plus importants et pertinents",
+      "séparés par des virgules",
+      "les mots-clés",
+      "exemple de format",
+      "réponse attendu"
+    ];
+
+    return keywords
+      .filter(keyword => {
+        // Vérifie que ce n'est pas une phrase d'introduction ou de formatage
+        const isNotPhrase = !phrasesToExclude.some(phrase => 
+          keyword.toLowerCase().includes(phrase.toLowerCase())
+        );
+        // Vérifie que le mot-clé a une longueur raisonnable et ne contient pas de caractères spéciaux
+        const isValidKeyword = keyword.length > 1 && 
+          keyword.length < 30 && 
+          !/[:\/\\]/.test(keyword);
+        
+        return isNotPhrase && isValidKeyword;
+      })
+      .map(keyword => keyword.toLowerCase()) // Normalise les mots-clés en minuscules
+      .filter((keyword, index, self) => 
+        self.indexOf(keyword) === index // Supprime les doublons
+      );
+  };
+
+  // Fonction pour détecter si un sujet est similaire
+  const isSimilarTopic = (existingKeywords, newKeywords) => {
+    // Vérifie que les entrées sont des tableaux
+    if (!Array.isArray(existingKeywords) || !Array.isArray(newKeywords)) {
+      console.warn('Keywords must be arrays:', { existingKeywords, newKeywords });
+      return false;
+    }
+
+    // Nettoie et normalise les mots-clés
+    const cleanedExisting = cleanKeywords(existingKeywords);
+    const cleanedNew = cleanKeywords(newKeywords);
+
+    // Trouve les mots-clés communs
+    const commonKeywords = cleanedExisting.filter(keyword =>
+      cleanedNew.includes(keyword)
+    );
+
+    // Calcule le pourcentage de similarité
+    const similarityThreshold = 0.3; // 30% de similarité minimum
+    const maxKeywords = Math.max(cleanedExisting.length, cleanedNew.length);
+    const similarity = commonKeywords.length / maxKeywords;
+
+    return similarity >= similarityThreshold;
+  };
+
+  // Fonction pour mettre à jour ou créer un nouveau sujet
+  const updateTopic = async (message) => {
+    const newKeywords = cleanKeywords(await extractKeywords(message.content));
+    
+    // Cherche un sujet similaire parmi tous les sujets existants
+    const similarTopicEntry = Object.entries(topics).find(([key, topic]) => {
+      const topicKeywords = cleanKeywords(topic.keywords);
+      return isSimilarTopic(topicKeywords, newKeywords);
+    });
+
+    if (similarTopicEntry) {
+      const [existingKey, existingTopic] = similarTopicEntry;
+      // Fusionne les mots-clés existants avec les nouveaux
+      const mergedKeywords = cleanKeywords([
+        ...existingTopic.keywords,
+        ...newKeywords
+      ]);
+
+      const updatedTopics = {
+        ...topics,
+        [existingKey]: {
+          ...existingTopic,
+          keywords: mergedKeywords,
+          lastUpdate: new Date().toISOString()
+        }
+      };
+      setTopics(updatedTopics);
+      localStorage.setItem('conversationTopics', JSON.stringify(updatedTopics));
+      return existingKey;
+    }
+
+    // Créer un nouveau sujet si aucun sujet similaire n'est trouvé
+    const newTopicKey = generateTopicKey(newKeywords);
+    const updatedTopics = {
+      ...topics,
+      [newTopicKey]: {
+        keywords: newKeywords,
+        created: new Date().toISOString(),
+        lastUpdate: new Date().toISOString(),
+        summary: message.content.substring(0, 100)
+      }
+    };
+    setTopics(updatedTopics);
+    localStorage.setItem('conversationTopics', JSON.stringify(updatedTopics));
+    return newTopicKey;
+  };
+
+  // Fonction pour rechercher des sujets similaires
+  const findRelatedTopics = async (query) => {
+    const queryKeywords = cleanKeywords(await extractKeywords(query));
+    
+    return Object.entries(topics)
+      .filter(([key, topic]) => {
+        const topicKeywords = cleanKeywords(topic.keywords);
+        return isSimilarTopic(topicKeywords, queryKeywords);
+      })
+      .map(([key, topic]) => ({
+        key,
+        ...topic
+      }));
+  };
 
   // Fonction pour optimiser le stockage des messages
   const optimizeMessages = (messages) => {
@@ -76,7 +249,7 @@ function App() {
 
     // Création d'un résumé basé sur le premier message utilisateur
     const firstUserMessage = messages.find(m => m.role === 'user');
-    const summary = firstUserMessage 
+    const summary = firstUserMessage
       ? compressContent(firstUserMessage.content).substring(0, 100) + '...'
       : 'Nouvelle conversation';
 
@@ -98,7 +271,7 @@ function App() {
       if (!optimizedConv) return;
 
       // Mise à jour des conversations
-      const updatedConversations = conversations.map(conv => 
+      const updatedConversations = conversations.map(conv =>
         conv.id === optimizedConv.id ? optimizedConv : conv
       );
 
@@ -146,21 +319,42 @@ function App() {
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    
+
     const userMessage = {
       role: 'user',
-      content: compressContent(inputText), // Optimise le contenu dès l'envoi
+      content: inputText.trim(),
       timestamp: new Date().toISOString()
     };
-    
+
+    // Mettre à jour le sujet actuel
+    const topicKey = await updateTopic(userMessage);
+    setCurrentTopicKey(topicKey);
+
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInputText('');
-    
+
     setIsLoading(true);
     try {
+      // Rechercher des sujets connexes
+      const relatedTopics = await findRelatedTopics(userMessage.content);
+      let contextualPrompt = userMessage.content;
+
+      if (relatedTopics.length > 0) {
+        // Ajouter le contexte des sujets connexes
+        contextualPrompt = `Context from previous conversations about similar topics:
+        ${relatedTopics.map(topic => `- ${topic.summary}`).join('\n')}
+
+        Current question: ${userMessage.content}`;
+      }
+
       const chatCompletion = await groq.chat.completions.create({
-        messages: updatedMessages.map(({ role, content }) => ({ role, content })),
+        messages: [
+          {
+            role: 'user',
+            content: contextualPrompt
+          }
+        ],
         model: "llama-3.3-70b-versatile",
         temperature: 0.7,
         max_tokens: 2048,
@@ -178,10 +372,12 @@ function App() {
       for await (const chunk of chatCompletion) {
         const content = chunk.choices[0]?.delta?.content || '';
         assistantMessage.content += content;
-        setMessages([...updatedMessages, { ...assistantMessage }]);
       }
 
-      // Optimise et sauvegarde la conversation finale
+      // Mettre à jour le sujet avec la réponse de l'assistant
+      await updateTopic(assistantMessage);
+
+      // Ajouter la réponse de l'assistant aux messages
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
     } catch (error) {
@@ -196,16 +392,6 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const extractKeywords = (messages) => {
-    // Simple keyword extraction from the first user message
-    const userMessage = messages.find(m => m.role === 'user')?.content || '';
-    const words = userMessage.toLowerCase().split(/\W+/);
-    const commonWords = new Set(['le', 'la', 'les', 'un', 'une', 'des', 'et', 'ou', 'mais', 'dans', 'sur', 'au', 'aux', 'a', 'en', 'pour', 'de', 'avec', 'par']);
-    return words
-      .filter(word => word.length > 3 && !commonWords.has(word))
-      .slice(0, 5);
   };
 
   const handleKeyPress = (e) => {
@@ -225,28 +411,48 @@ function App() {
     }
   };
 
+  const handleTopicSelect = (topicKey) => {
+    setCurrentTopicKey(topicKey);
+    setIsHistoryVisible(false);
+  };
+
+  const renderTopicHistory = () => {
+    return Object.entries(topics)
+      .sort(([, a], [, b]) => new Date(b.lastUpdate) - new Date(a.lastUpdate))
+      .map(([key, topic]) => (
+        <div
+          key={key}
+          className="topic-item"
+          onClick={() => handleTopicSelect(key)}
+        >
+          <div className="topic-summary">{topic.summary}</div>
+          <div className="topic-keywords">{topic.keywords}</div>
+        </div>
+      ));
+  };
+
   return (
     <div className="App">
-      <button 
-        className="toggle-history" 
+      <button
+        className="toggle-history"
         onClick={() => setIsHistoryVisible(!isHistoryVisible)}
       >
         {isHistoryVisible ? '×' : '≡'}
       </button>
-      
-      <ConversationHistory 
+
+      <ConversationHistory
         messages={messages}
         conversations={conversations}
         isVisible={isHistoryVisible}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
       />
-      
+
       <div className="app-container">
         <DynamicContent componentKey="welcome" />
-        <div className="chat-container" style={{ 
-          padding: '20px 40px', 
-          maxWidth: '1000px', 
+        <div className="chat-container" style={{
+          padding: '20px 40px',
+          maxWidth: '1000px',
           margin: '20px auto',
           backgroundColor: '#ffffff',
           boxShadow: '0 0 10px rgba(0,0,0,0.1)',
@@ -255,9 +461,9 @@ function App() {
           flexDirection: 'column',
           height: '80vh'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '20px'
           }}>
@@ -276,8 +482,8 @@ function App() {
               Clear History
             </button>
           </div>
-          
-          <div 
+
+          <div
             ref={contentRef}
             style={{
               flex: 1,
@@ -303,8 +509,8 @@ function App() {
                   marginLeft: message.role === 'user' ? 'auto' : '0'
                 }}
               >
-                <div style={{ 
-                  fontWeight: 'bold', 
+                <div style={{
+                  fontWeight: 'bold',
                   marginBottom: '5px',
                   color: message.role === 'user' ? '#1976d2' : '#2e7d32'
                 }}>
@@ -350,6 +556,12 @@ function App() {
             </button>
           </div>
         </div>
+        {isHistoryVisible && (
+          <div className="topic-history">
+            <h3>Topic History</h3>
+            {renderTopicHistory()}
+          </div>
+        )}
       </div>
     </div>
   );
