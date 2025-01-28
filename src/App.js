@@ -140,7 +140,7 @@ function App() {
 
   return (
     <div className="App">
-      <DynamicContent componentKey="welcome" />
+      {/* <DynamicContent componentKey="welcome" /> */}
       <div style={{ 
         padding: '20px 40px', 
         maxWidth: '1000px', 
