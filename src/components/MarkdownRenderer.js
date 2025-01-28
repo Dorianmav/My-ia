@@ -43,6 +43,7 @@ const MermaidDiagram = ({ code }) => {
   const elementId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
 
   useEffect(() => {
+    // console.log('Code changed:', code);
     const renderDiagram = async () => {
       try {
         const cleanCode = code.trim();

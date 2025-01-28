@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-import UserTable from './components/UserTable';
-import DynamicContent from './components/DynamicContent';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import Groq from 'groq-sdk';
 import mermaid from 'mermaid';
@@ -183,8 +181,7 @@ function App() {
             border: '1px solid #eee',
             borderRadius: '4px',
             backgroundColor: '#fafafa',
-            marginBottom: '20px',
-            scrollBehavior: 'smooth'
+            marginBottom: '20px'
           }}
         >
           {messages.map((message, index) => (
