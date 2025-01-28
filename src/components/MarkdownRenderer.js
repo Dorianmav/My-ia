@@ -41,14 +41,42 @@ const MermaidDiagram = ({ code }) => {
   const [svgContent, setSvgContent] = useState('');
   const [error, setError] = useState(null);
   const elementId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
-    // console.log('Code changed:', code);
-    const renderDiagram = async () => {
+    // Nettoyer le timeout précédent si il existe
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Attendre un peu que le texte soit complet
+    timeoutRef.current = setTimeout(async () => {
       try {
-        const cleanCode = code.trim();
+        // Vérification que le code n'est pas undefined ou vide
+        if (!code || typeof code !== 'string') {
+          setError('Le code du diagramme est invalide ou manquant');
+          return;
+        }
+
+        // Nettoyer et corriger la syntaxe
+        let cleanCode = code.trim()
+          .replace(/\|>/g, '|')  // Remplacer |> par |
+          // .replace(/-->/g, ' --> ')  // Ajouter des espaces autour des flèches
+          // .replace(/->/g, ' --> ')   // Standardiser les flèches
+          // .replace(/\s+/g, ' ')      // Normaliser les espaces
+          // .replace(/\[(\w+)\]/g, '["$1"]') // Ajouter des guillemets aux labels si nécessaire
+
         if (!cleanCode) {
           setError('Le code du diagramme est vide');
+          return;
+        }
+
+        // Vérifier que le code commence par un type de diagramme valide
+        const validDiagramTypes = ['graph', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'flowchart', 'gantt', 'pie'];
+        const hasValidType = validDiagramTypes.some(type => cleanCode.startsWith(type));
+        
+        if (!hasValidType) {
+          setError(`Le diagramme doit commencer par un type valide : ${validDiagramTypes.join(', ')}`);
           return;
         }
 
@@ -68,18 +96,28 @@ const MermaidDiagram = ({ code }) => {
         });
 
         // Vérifier la syntaxe avant le rendu
-        await mermaid.parse(cleanCode);
+        try {
+          await mermaid.parse(cleanCode);
+        } catch (parseError) {
+          setError(`Erreur de syntaxe : ${parseError.message}`);
+          return;
+        }
 
         // Rendre le diagramme
         const { svg } = await mermaid.render(elementId.current, cleanCode);
         setSvgContent(svg);
       } catch (err) {
         console.error('Erreur Mermaid:', err);
-        setError(err.message || 'Erreur lors du rendu du diagramme. Vérifiez la syntaxe.');
+        setError(`Erreur de rendu : ${err.message || 'Erreur inconnue'}`);
+      }
+    }, 1000); // Attendre 1 seconde après le dernier changement
+
+    // Nettoyer le timeout si le composant est démonté
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
     };
-
-    renderDiagram();
   }, [code]);
 
   if (error) {
@@ -101,8 +139,7 @@ const MermaidDiagram = ({ code }) => {
               margin: '10px 0 0 0',
               padding: '10px',
               backgroundColor: '#f8f9fa',
-              borderRadius: '4px',
-              fontSize: '0.9em'
+              borderRadius: '4px'
             }}>{code}</pre>
           </details>
         </div>
@@ -110,20 +147,43 @@ const MermaidDiagram = ({ code }) => {
     );
   }
 
-  return svgContent ? (
-    <div style={{ margin: '10px 0' }}>
-      <div 
-        style={{ 
-          background: '#fff',
-          padding: '15px',
-          border: '1px solid #e0e0e0',
-          borderRadius: '4px',
-          overflowX: 'auto'
-        }}
-        dangerouslySetInnerHTML={{ __html: svgContent }}
-      />
+  return (
+    <div style={{ margin: '20px 0' }}>
+      {/* Afficher d'abord le code source */}
+      <div style={{ 
+        position: 'relative',
+        backgroundColor: '#f5f5f5', 
+        padding: '10px', 
+        borderRadius: '4px',
+        marginBottom: '10px',
+      }}>
+        <CopyButton code={code} />
+        <pre style={{ 
+          fontFamily: 'monospace',
+          whiteSpace: 'pre-wrap',
+          wordWrap: 'break-word',
+          margin: '0',
+          paddingRight: '50px'
+        }}>
+          {code}
+        </pre>
+      </div>
+
+      {/* Afficher ensuite le diagramme */}
+      {svgContent && (
+        <div 
+          style={{ 
+            background: '#fff', 
+            padding: '15px',
+            border: '1px solid #e0e0e0',
+            borderRadius: '4px',
+            overflowX: 'auto'
+          }}
+          dangerouslySetInnerHTML={{ __html: svgContent }}
+        />
+      )}
     </div>
-  ) : null;
+  );
 };
 
 const MarkdownRenderer = ({ content }) => {

@@ -90,7 +90,8 @@ function App() {
     try {
       const chatCompletion = await groq.chat.completions.create({
         messages: updatedMessages.map(({ role, content }) => ({ role, content })),
-        model: "llama-3.3-70b-versatile",
+        // model: "llama-3.3-70b-versatile",
+        model: "llama-3.2-90b-vision-preview",
         temperature: 0.7,
         max_tokens: 2048,
         top_p: 1,
