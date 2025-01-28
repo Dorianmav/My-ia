@@ -11,9 +11,11 @@ mermaid.initialize({
   startOnLoad: true,
   theme: 'default',
   securityLevel: 'loose',
+  logLevel: 'error',
   flowchart: {
     htmlLabels: true,
-    curve: 'basis'
+    curve: 'basis',
+    useMaxWidth: true
   },
   sequence: {
     diagramMarginX: 50,
@@ -24,7 +26,19 @@ mermaid.initialize({
     boxMargin: 10,
     boxTextMargin: 5,
     noteMargin: 10,
-    messageMargin: 35
+    messageMargin: 35,
+    mirrorActors: false,
+    bottomMarginAdj: 1
+  },
+  gantt: {
+    titleTopMargin: 25,
+    barHeight: 20,
+    barGap: 4,
+    topPadding: 50,
+    leftPadding: 75,
+    gridLineStartPadding: 35,
+    fontSize: 11,
+    numberSectionStyles: 4
   }
 });
 
