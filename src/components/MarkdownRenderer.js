@@ -40,6 +40,7 @@ const CopyButton = ({ code }) => {
 const MermaidDiagram = ({ code }) => {
   const [svgContent, setSvgContent] = useState('');
   const [error, setError] = useState(null);
+  const [showCode, setShowCode] = useState(false);
   const elementId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
   const timeoutRef = useRef(null);
 
@@ -149,27 +150,47 @@ const MermaidDiagram = ({ code }) => {
 
   return (
     <div style={{ margin: '20px 0' }}>
-      {/* Afficher d'abord le code source */}
-      <div style={{ 
-        position: 'relative',
-        backgroundColor: '#f5f5f5', 
-        padding: '10px', 
-        borderRadius: '4px',
-        marginBottom: '10px',
-      }}>
-        <CopyButton code={code} />
-        <pre style={{ 
-          fontFamily: 'monospace',
-          whiteSpace: 'pre-wrap',
-          wordWrap: 'break-word',
-          margin: '0',
-          paddingRight: '50px'
-        }}>
-          {code}
-        </pre>
-      </div>
+      {/* Bouton pour afficher/cacher le code */}
+      <button 
+        onClick={() => setShowCode(!showCode)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: '#666',
+          padding: '4px 8px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          textDecoration: 'underline',
+          opacity: 0.7,
+          marginBottom: '5px'
+        }}
+      >
+        {showCode ? '⌃ masquer code' : '⌄ voir code'}
+      </button>
 
-      {/* Afficher ensuite le diagramme */}
+      {/* Code source */}
+      {showCode && (
+        <div style={{ 
+          position: 'relative',
+          backgroundColor: '#f5f5f5', 
+          padding: '10px', 
+          borderRadius: '4px',
+          marginBottom: '10px',
+        }}>
+          <CopyButton code={code} />
+          <pre style={{ 
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap',
+            wordWrap: 'break-word',
+            margin: '0',
+            paddingRight: '50px'
+          }}>
+            {code}
+          </pre>
+        </div>
+      )}
+
+      {/* Diagramme */}
       {svgContent && (
         <div 
           style={{ 
