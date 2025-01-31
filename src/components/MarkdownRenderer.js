@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import mermaid from 'mermaid';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -35,6 +36,10 @@ const CopyButton = ({ code }) => {
       Copy
     </button>
   );
+};
+
+CopyButton.propTypes = {
+  code: PropTypes.string.isRequired
 };
 
 const MermaidDiagram = ({ code }) => {
@@ -121,7 +126,7 @@ const MermaidDiagram = ({ code }) => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, []);
+  }, [code]);
 
   if (error) {
     return (
@@ -214,8 +219,11 @@ const MermaidDiagram = ({ code }) => {
   );
 };
 
+MermaidDiagram.propTypes = {
+  code: PropTypes.string.isRequired
+};
+
 const MarkdownRenderer = ({ content }) => {
-  // console.log("content:", content);
   return (
     <div className="markdown-content" style={{ textAlign: 'left' }}>
       <ReactMarkdown 
