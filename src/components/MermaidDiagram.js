@@ -10,9 +10,18 @@ const MermaidDiagram = ({ code }) => {
   const elementId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
 
   useEffect(() => {
+    console.log('Rendering diagram');
     const renderDiagram = async () => {
       try {
-        // Initialiser mermaid avec les bonnes options
+        // Prétraiter le code
+        let processedCode = code.trim();
+        
+        // S'assurer que le code commence par un type de diagramme
+        if (!processedCode.match(/^(graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|flowchart|gantt|pie)/i)) {
+          processedCode = `graph TD\n${processedCode}`;
+        }
+
+        // Initialiser mermaid
         await mermaid.initialize({
           startOnLoad: false,
           theme: 'default',
@@ -24,16 +33,16 @@ const MermaidDiagram = ({ code }) => {
           }
         });
 
-        // Vérifier la syntaxe avant le rendu
+        // Vérifier la syntaxe
         try {
-          await mermaid.parse(code);
+          await mermaid.parse(processedCode);
         } catch (parseError) {
           setError(`Erreur de syntaxe : ${parseError.message}`);
           return;
         }
 
         // Rendre le diagramme
-        const { svg } = await mermaid.render(elementId.current, code);
+        const { svg } = await mermaid.render(elementId.current, processedCode);
         setSvgContent(svg);
         setError(null);
       } catch (err) {
