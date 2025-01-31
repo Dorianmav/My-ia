@@ -45,6 +45,7 @@ const MermaidDiagram = ({ code }) => {
   const timeoutRef = useRef(null);
 
   useEffect(() => {
+    console.log('useEffect called');
     // Nettoyer le timeout précédent si il existe
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -105,6 +106,7 @@ const MermaidDiagram = ({ code }) => {
         }
 
         // Rendre le diagramme
+        console.log('Rendering diagram...');
         const { svg } = await mermaid.render(elementId.current, cleanCode);
         setSvgContent(svg);
       } catch (err) {
@@ -119,7 +121,7 @@ const MermaidDiagram = ({ code }) => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [code]);
+  }, []);
 
   if (error) {
     return (
@@ -157,15 +159,20 @@ const MermaidDiagram = ({ code }) => {
           background: 'none',
           border: 'none',
           color: '#666',
-          padding: '4px 8px',
           cursor: 'pointer',
-          fontSize: '12px',
-          textDecoration: 'underline',
-          opacity: 0.7,
-          marginBottom: '5px'
+          padding: '4px 8px',
+          fontSize: '0.9em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
         }}
       >
-        {showCode ? '⌃ masquer code' : '⌄ voir code'}
+        <span style={{ 
+          fontSize: '1.2em',
+          transform: showCode ? 'rotate(90deg)' : 'none',
+          transition: 'transform 0.2s ease'
+        }}>▶</span>
+        {showCode ? 'Masquer le code source' : 'Afficher le code source'}
       </button>
 
       {/* Code source */}
@@ -208,6 +215,7 @@ const MermaidDiagram = ({ code }) => {
 };
 
 const MarkdownRenderer = ({ content }) => {
+  // console.log("content:", content);
   return (
     <div className="markdown-content" style={{ textAlign: 'left' }}>
       <ReactMarkdown 
