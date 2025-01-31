@@ -157,7 +157,7 @@ function App() {
           alignItems: 'center',
           marginBottom: '20px'
         }}>
-          <h2 style={{ margin: 0 }}>Chat with Millia</h2>
+          <h2 style={{ margin: 0 }}>Chat with Mia</h2>
           <button
             onClick={clearHistory}
             style={{
@@ -187,7 +187,7 @@ function App() {
         >
           {messages.map((message, index) => (
             <div
-              key={index}
+              key={`${message.timestamp || Date.now()}-${index}`}
               style={{
                 marginBottom: '20px',
                 padding: '10px',
@@ -203,7 +203,7 @@ function App() {
                 marginBottom: '5px',
                 color: message.role === 'user' ? '#1976d2' : '#2e7d32'
               }}>
-                {message.role === 'user' ? 'You' : 'Millia'}
+                {message.role === 'user' ? 'You' : 'Mia'}
               </div>
               <MarkdownRenderer content={message.content} />
             </div>
