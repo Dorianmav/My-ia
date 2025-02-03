@@ -160,7 +160,8 @@ function App() {
       user: userMsg,
       assistant: assistantMessages[index] || null
     }));
-    console.log("les 3 dernieres paires : ", lastThreePairs);
+    // TODO : remove the console log
+    //console.log("les 3 dernieres paires : ", lastThreePairs);
 
     // Récupérer le résumé précédent du localStorage
     const previousSummary = localStorage.getItem('chatSummary');
@@ -169,7 +170,8 @@ function App() {
     const combinedText = lastThreePairs
       .map(pair => `User: ${pair.user?.content}\nAssistant: ${pair.assistant?.content}`)
       .join('\n\n');
-    console.log("combinedText : ", combinedText);
+    // TODO : remove the console log
+    //console.log("combinedText : ", combinedText);
 
     try {
       const completion = await groq.chat.completions.create({
