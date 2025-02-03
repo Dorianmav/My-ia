@@ -162,11 +162,14 @@ function App() {
     }));
     console.log("les 3 dernieres paires : ", lastThreePairs);
 
+    // Récupérer le résumé précédent du localStorage
+    const previousSummary = localStorage.getItem('chatSummary');
+    
     // Combine the messages into a single text
     const combinedText = lastThreePairs
       .map(pair => `User: ${pair.user?.content}\nAssistant: ${pair.assistant?.content}`)
       .join('\n\n');
-      console.log("combinedText : ", combinedText);
+    console.log("combinedText : ", combinedText);
 
     try {
       const completion = await groq.chat.completions.create({
@@ -175,6 +178,10 @@ function App() {
             role: "system",
             content: "You are a precise summarizer. Create a concise summary of the conversation in 25 words, focusing on the main topic and key points."
           },
+          ...(previousSummary ? [{
+            role: "user",
+            content: `Previous context: ${previousSummary}`
+          }] : []),
           {
             role: "user",
             content: `Summarize this conversation:\n${combinedText}`
