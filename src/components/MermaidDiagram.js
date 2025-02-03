@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import mermaid from 'mermaid';
 import CopyButton from './CopyButton';
+import SaveImageButton from './SaveImageButton';
 
 const MermaidDiagram = ({ code }) => {
   const [svgContent, setSvgContent] = useState('');
@@ -133,16 +134,19 @@ const MermaidDiagram = ({ code }) => {
 
       {/* Diagramme */}
       {svgContent && (
-        <div
-          style={{ 
-            background: '#fff', 
-            padding: '15px',
-            border: '1px solid #e0e0e0',
-            borderRadius: '4px',
-            overflowX: 'auto'
-          }}
-          dangerouslySetInnerHTML={{ __html: svgContent }}
-        />
+        <div>
+          <div
+            style={{ 
+              background: '#fff', 
+              padding: '15px',
+              border: '1px solid #e0e0e0',
+              borderRadius: '4px',
+              overflowX: 'auto'
+            }}
+            dangerouslySetInnerHTML={{ __html: svgContent }}
+          />
+          <SaveImageButton svgContent={svgContent} />
+        </div>
       )}
     </div>
   );

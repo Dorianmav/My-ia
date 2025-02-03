@@ -91,8 +91,8 @@ function App() {
     try {
       const chatCompletion = await groq.chat.completions.create({
         messages: updatedMessages.map(({ role, content }) => ({ role, content })),
-        // model: "llama-3.3-70b-versatile",
-        model: "llama-3.2-90b-vision-preview",
+        model: "llama-3.3-70b-versatile",
+        // model: "llama-3.2-11b-vision-preview",
         temperature: 0.7,
         max_tokens: 2048,
         top_p: 1,
@@ -189,14 +189,37 @@ function App() {
             content: `Summarize this conversation:\n${combinedText}`
           }
         ],
-        model: "llama-3.2-90b-vision-preview",
+        model: "llama-3.3-70b-versatile",
+        // model: "llama-3.2-11b-vision-preview",
         temperature: 0.7,
         max_tokens: 50,
         top_p: 1,
         stream: false
       });
 
-      return completion.choices[0]?.message?.content || "No summary available";
+      // Clean the response from any potential prefixes
+      let summary = completion.choices[0]?.message?.content || "No summary available";
+      
+      // Remove common prefixes that might appear
+      const prefixesToRemove = [
+        /^Summary:\s*/i,
+        /^Summary \(\d+ words\):\s*/i,
+        /^Résumé:\s*/i,
+        /^Résumé de la conversation \(\d+ mots\):\s*/i,
+        /^Here's a \d+-word summary:\s*/i,
+        /^Conversation summary:\s*/i,
+        /^Here is a summary of the conversation in \d+ words:\s*/i,
+        /^Voici un résumé de la conversation en \d+ mots:\s*/i
+      ];
+
+      prefixesToRemove.forEach(prefix => {
+        summary = summary.replace(prefix, '');
+      });
+
+      // Trim any remaining whitespace
+      summary = summary.trim();
+
+      return summary;
     } catch (error) {
       console.error('Error generating summary:', error);
       return "Error generating summary";
