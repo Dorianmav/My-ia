@@ -7,7 +7,7 @@ const MermaidDiagram = ({ code }) => {
   const [svgContent, setSvgContent] = useState('');
   const [error, setError] = useState(null);
   const [showCode, setShowCode] = useState(false);
-  const elementId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
+  const elementId = useRef(`mermaid-${Math.random().toString(36).slice(2, 11)}`);
 
   useEffect(() => {
     console.log('Rendering diagram');
@@ -22,7 +22,7 @@ const MermaidDiagram = ({ code }) => {
         }
 
         // Initialiser mermaid
-        await mermaid.initialize({
+        mermaid.initialize({
           startOnLoad: false,
           theme: 'default',
           securityLevel: 'loose',
