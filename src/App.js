@@ -65,6 +65,7 @@ function App() {
     if (window.confirm('Are you sure you want to clear the chat history?')) {
       setMessages([]);
       localStorage.removeItem('chatHistory');
+      localStorage.removeItem('chatSummary');
     }
   };
 
@@ -99,6 +100,7 @@ function App() {
         stop: null
       });
 
+      let fullResponse = '';
       let assistantMessage = {
         role: 'assistant',
         content: '',
@@ -107,14 +109,27 @@ function App() {
 
       for await (const chunk of chatCompletion) {
         const content = chunk.choices[0]?.delta?.content || '';
+        fullResponse += content;
         assistantMessage.content += content;
         setMessages([...updatedMessages, { ...assistantMessage }]);
       }
 
-      // Save final version to localStorage
-      const finalMessages = [...updatedMessages, assistantMessage];
-      setMessages(finalMessages);
-      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+      // After receiving the complete response
+      assistantMessage = {
+        role: 'assistant',
+        content: fullResponse.trim(),
+        timestamp: new Date().toISOString()
+      };
+      
+      const newMessages = [...updatedMessages, assistantMessage];
+      setMessages(newMessages);
+      
+      // Generate and save the new summary
+      const summary = await getSummaryFromLastThreeMessagePairs(newMessages);
+      localStorage.setItem('chatSummary', summary);
+      
+      // Save messages to localStorage
+      localStorage.setItem('chatHistory', JSON.stringify(newMessages));
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = {
@@ -136,6 +151,48 @@ function App() {
       handleSendMessage();
     }
   };
+
+  async function getSummaryFromLastThreeMessagePairs(messages) {
+    const userMessages = messages.filter(msg => msg.role === 'user').slice(-3);
+    const assistantMessages = messages.filter(msg => msg.role === 'assistant').slice(-3);
+
+    const lastThreePairs = userMessages.map((userMsg, index) => ({
+      user: userMsg,
+      assistant: assistantMessages[index] || null
+    }));
+    console.log("les 3 dernieres paires : ", lastThreePairs);
+
+    // Combine the messages into a single text
+    const combinedText = lastThreePairs
+      .map(pair => `User: ${pair.user?.content}\nAssistant: ${pair.assistant?.content}`)
+      .join('\n\n');
+      console.log("combinedText : ", combinedText);
+
+    try {
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a precise summarizer. Create a concise summary of the conversation in 25 words, focusing on the main topic and key points."
+          },
+          {
+            role: "user",
+            content: `Summarize this conversation:\n${combinedText}`
+          }
+        ],
+        model: "llama-3.2-90b-vision-preview",
+        temperature: 0.7,
+        max_tokens: 50,
+        top_p: 1,
+        stream: false
+      });
+
+      return completion.choices[0]?.message?.content || "No summary available";
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      return "Error generating summary";
+    }
+  }
 
   return (
     <div className="App">
