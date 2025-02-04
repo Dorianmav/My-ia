@@ -17,6 +17,14 @@ const MermaidDiagram = ({ code }) => {
         // Prétraiter le code
         let processedCode = code.trim();
         
+        // Remplacer |> par |
+        processedCode = processedCode.replace(/\|>/g, '|');
+        
+        // Remplacer les espaces par des underscores dans le texte entre crochets
+        processedCode = processedCode.replace(/\[([^\]]+)\]/g, (match, p1) => {
+          return `[${p1.replace(/\s+/g, '_')}]`;
+        });
+        
         // S'assurer que le code commence par un type de diagramme
         if (!processedCode.match(/^(graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|flowchart|gantt|pie)/i)) {
           processedCode = `graph TD\n${processedCode}`;
