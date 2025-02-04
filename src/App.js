@@ -228,7 +228,21 @@ function App() {
   return (
     <div className="App">
       <button 
-        className="toggle-history" 
+        style={{
+          position: 'fixed',
+          left: isHistoryVisible ? '310px' : '10px',
+          top: '10px',
+          zIndex: 1001,
+          padding: '8px 12px',
+          fontSize: '20px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          transition: 'left 0.3s ease',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+        }}
         onClick={() => setIsHistoryVisible(!isHistoryVisible)}
       >
         {isHistoryVisible ? '×' : '≡'}
@@ -243,7 +257,7 @@ function App() {
       />
       
       <div className="app-container">
-        <DynamicContent componentKey="welcome" />
+        {/* <DynamicContent componentKey="welcome" /> */}
         <div className="chat-container" style={{ 
           padding: '20px 40px', 
           maxWidth: '1000px', 

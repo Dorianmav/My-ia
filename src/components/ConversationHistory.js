@@ -1,5 +1,4 @@
 import React from 'react';
-import './ConversationHistory.css';
 
 const ConversationHistory = ({ messages, conversations, isVisible, onSelectConversation, onNewConversation }) => {
   // Group messages by date sections
@@ -47,35 +46,123 @@ const ConversationHistory = ({ messages, conversations, isVisible, onSelectConve
   const groups = groupMessagesByDate();
 
   return (
-    <div className={`history-sidebar ${isVisible ? 'visible' : ''}`}>
-      <div className="history-header">
-        <h2>Conversations</h2>
-        <button className="new-conversation-btn" onClick={onNewConversation}>
-          <span className="plus-icon">+</span>
+    <div style={{ ...styles.historySidebar, ...(isVisible ? styles.visible : {}) }}>
+      <div style={styles.historyHeader}>
+        <h2 style={styles.historyHeaderH2}>Conversations</h2>
+        <button
+          style={styles.newConversationBtn}
+          onClick={onNewConversation}
+        >
+          <span style={styles.plusIcon}>+</span>
           Nouvelle conversation
         </button>
       </div>
-      
-      {Object.entries(groups).map(([period, convs]) => (
-        convs.length > 0 && (
-          <div key={period} className="history-section">
-            <h3 className="history-period">{period}</h3>
-            {convs.map((conv, index) => (
-              <div 
-                key={index} 
-                className="history-item"
-                onClick={() => onSelectConversation(conv.id)}
-              >
-                <div className="history-item-content">
-                  <div className="history-item-summary">{conv.summary}</div>
+  
+      {Object.entries(groups).map(
+        ([period, convs]) =>
+          convs.length > 0 && (
+            <div key={period} style={styles.historySection}>
+              <h3 style={styles.historyPeriod}>{period}</h3>
+              {convs.map((conv, index) => (
+                <div
+                  key={index}
+                  style={styles.historyItem}
+                  onClick={() => onSelectConversation(conv.id)}
+                >
+                  <div style={styles.historyItemContent}>
+                    <div style={styles.historyItemSummary}>{conv.summary}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )
-      ))}
+              ))}
+            </div>
+          )
+      )}
     </div>
   );
+};
+
+const styles = {
+  historySidebar: {
+    position: "fixed",
+    left: "-300px",
+    top: "0",
+    width: "300px",
+    height: "100vh",
+    backgroundColor: "white",
+    boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
+    transition: "left 0.3s ease",
+    overflowY: "auto",
+    zIndex: 1000,
+  },
+  visible: {
+    left: "0",
+  },
+  historyHeader: {
+    position: "sticky",
+    top: "0",
+    backgroundColor: "white",
+    padding: "20px",
+    borderBottom: "1px solid #eee",
+    zIndex: 2,
+  },
+  historyHeaderH2: {
+    margin: "0 0 15px 0",
+    fontSize: "20px",
+    color: "#333",
+  },
+  newConversationBtn: {
+    width: "100%",
+    padding: "10px",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "14px",
+    fontWeight: "500",
+    transition: "background-color 0.2s",
+  },
+  plusIcon: {
+    marginRight: "8px",
+    fontSize: "18px",
+    fontWeight: "bold",
+  },
+  historySection: {
+    marginBottom: "20px",
+    padding: "0 20px",
+  },
+  historyPeriod: {
+    color: "#666",
+    fontSize: "14px",
+    fontWeight: "600",
+    margin: "10px 0",
+    paddingBottom: "5px",
+    borderBottom: "1px solid #eee",
+  },
+  historyItem: {
+    padding: "12px 0",
+    cursor: "pointer",
+    color: "#333",
+    transition: "all 0.2s",
+    textAlign: "left",
+    fontSize: "14px",
+    borderBottom: "1px solid #eee",
+  },
+  historyItemContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  historyItemSummary: {
+    color: "#333",
+    fontWeight: "500",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
 };
 
 export default ConversationHistory;
