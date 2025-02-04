@@ -209,7 +209,8 @@ function App() {
         /^Here's a \d+-word summary:\s*/i,
         /^Conversation summary:\s*/i,
         /^Here is a summary of the conversation in \d+ words:\s*/i,
-        /^Voici un résumé de la conversation en \d+ mots:\s*/i
+        /^Voici un résumé de la conversation en \d+ mots:\s*/i,
+        /^Conversation résumée en \d+ mots\s*:\s*/i
       ];
 
       prefixesToRemove.forEach(prefix => {
