@@ -15,15 +15,7 @@ const MermaidDiagram = ({ code }) => {
     const renderDiagram = async () => {
       try {
         // Prétraiter le code
-        let processedCode = code.trim();
-        
-        // Remplacer |> par |
-        processedCode = processedCode.replace(/\|>/g, '|');
-        
-        // Remplacer les espaces par des underscores dans le texte entre crochets
-        processedCode = processedCode.replace(/\[([^\]]+)\]/g, (match, p1) => {
-          return `[${p1.replace(/\s+/g, '_')}]`;
-        });
+        let processedCode = pretreatCode(code);
         
         // S'assurer que le code commence par un type de diagramme
         if (!processedCode.match(/^(graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|flowchart|gantt|pie)/i)) {
@@ -63,6 +55,44 @@ const MermaidDiagram = ({ code }) => {
 
     renderDiagram();
   }, [code]);
+
+  const pretreatCode = (code) => {
+    let processedCode = code.trim();
+        
+        // Remplacer |> par | et ajouter des underscores entre les mots dans les nœuds
+        processedCode = processedCode
+          .replace(/\|>/g, '|')
+          .replace(/\[([^\]]+)\]/g, (match, p1) => `[${p1.replace(/\s+/g, '_')}]`)
+          
+          // Correction des flèches avec étiquettes
+          .replace(/-->\|([^|]+)\|>/g, (match, label) => `-->|${label.trim().replace(/\s+/g, '_')}|`)
+          
+          // Conversion des diagrammes spécifiques
+          .replace(/^componentDiagram\s*\n/m, (match) => {
+            // Vérifie si le contenu ressemble plus à un diagramme de classes ou à un graphe
+            const hasClassFeatures = processedCode.includes('class') || processedCode.includes('extends');
+            return hasClassFeatures ? 'classDiagram\n' : 'graph TD\n';
+          })
+          .replace(/^deploymentDiagram\s*\n/m, 'graph TD\n')
+          
+          // Conversion des composants en sous-graphes
+          .replace(/component\s+{([^}]*)}/g, (match, content) => `subgraph ${content.trim()}`)
+          
+          // Gestion des états avec propriétés
+          .replace(/state\s+"([^"]+)"\s*{([^}]*)}/g, (match, stateName, properties) => {
+            const lines = properties.trim().split('\n');
+            let result = `state "${stateName}"`;
+            
+            // Convertir les propriétés en notes
+            const notes = lines
+              .map(line => line.trim())
+              .filter(line => line)
+              .map(line => `note right of "${stateName}": ${line}`);
+            
+            return result + '\n' + notes.join('\n');
+          });
+    return processedCode;
+  }
 
   if (error) {
     return (
